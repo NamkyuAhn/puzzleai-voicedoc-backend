@@ -2,12 +2,12 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
 
 class User(AbstractBaseUser):
-    username     = models.CharField(max_length=100)
+    name         = models.CharField(max_length=100)
     email        = models.EmailField(verbose_name='email', max_length=255, unique=True)
     is_doctor    = models.BooleanField(default=False)
     created_at   = models.DateTimeField(auto_now_add=True)
     reservations = models.ManyToManyField('users.Doctor', through='reservations.Reservation', related_name='user_reservation')
-
+    USERNAME_FIELD = 'email'
     class Meta:
         db_table = 'users'
 
