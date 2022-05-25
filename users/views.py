@@ -1,9 +1,12 @@
 import json
 
-from users.models    import User
-from django.views    import View
-from django.http     import JsonResponse
-from django.db.utils import IntegrityError
+from users.models     import User
+from users.validation import Validation
+
+from django.views           import View
+from django.http            import JsonResponse
+from django.db.utils        import IntegrityError
+from django.core.exceptions import ValidationError
 
 class SignupView(View):
     def post(self, request):
@@ -13,6 +16,9 @@ class SignupView(View):
             email     = data['email']
             is_doctor = data['is_doctor']
             password  = data['password']
+
+            Validation.email_validate(email)
+            Validation.password_validate(password)
 
             User.objects.create_user(
                 name      = name,
@@ -27,4 +33,7 @@ class SignupView(View):
         except IntegrityError:
             return JsonResponse({'message' : 'email is already exists'}, status = 400)
         except ValueError as e:
+            return JsonResponse({'message' : f'{e}'}, status = 400)
+        except ValidationError as e:
+            e = str(e)[2:-2]
             return JsonResponse({'message' : f'{e}'}, status = 400)

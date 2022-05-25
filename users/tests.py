@@ -9,7 +9,7 @@ class UserSignupTest(TestCase):
             name = 'test1',
             email = 'test1@gmail.com',
             is_doctor = 'False',
-            password = '1q2w3e4r'
+            password = '1q2w3e4r!'
         )
 
     def tearDown(self):
@@ -21,7 +21,7 @@ class UserSignupTest(TestCase):
             'name'  : 'test2',
             'email' : 'test2@gmail.com',
             'is_doctor' : 'False',
-            'password' : '1q2w3e4r'
+            'password' : '1q2w3e4r!'
         }	
 	    
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
@@ -46,25 +46,12 @@ class UserSignupTest(TestCase):
             'name'  : '',
             'email' : 'test2@gmail.com',
             'is_doctor' : 'False',
-            'password' : '1q2w3e4r'
+            'password' : '1q2w3e4r!'
         }	
 	    
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'must have user name'})
-    
-    def test_email_is_none(self):
-        client = Client()
-        form = {
-            'name'  : 'test2',
-            'email' : '',
-            'is_doctor' : 'False',
-            'password' : '1q2w3e4r'
-        }	
-	    
-        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {'message' : 'must have user email'})
     
     def test_is_doctor_is_none(self):
         client = Client()
@@ -72,25 +59,38 @@ class UserSignupTest(TestCase):
             'name'  : 'test2',
             'email' : 'test2@gmail.com',
             'is_doctor' : '',
-            'password' : '1q2w3e4r'
+            'password' : '1q2w3e4r!'
         }	
 	    
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'must have user is_doctor'})
     
-    def test_password_is_none(self):
+    def test_email_validation_error(self):
+        client = Client()
+        form = {
+            'name'  : 'test2',
+            'email' : 'test2gmail.com',
+            'is_doctor' : 'False',
+            'password' : '1q2w3e4r!'
+        }	
+	    
+        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'not in email format'})
+    
+    def test_password_validation_error(self):
         client = Client()
         form = {
             'name'  : 'test2',
             'email' : 'test2@gmail.com',
             'is_doctor' : 'False',
-            'password' : ''
+            'password' : '1234'
         }	
 	    
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {'message' : 'must have user password'})
+        self.assertEqual(response.json(), {'message' : 'not in password format'})
 
 class UserSignupIntergrityErrorTest(TransactionTestCase):
     def setUp(self):
