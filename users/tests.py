@@ -1,9 +1,9 @@
 import json
 
-from django.test  import Client, TransactionTestCase
+from django.test  import Client, TransactionTestCase, TestCase
 from users.models import User
 
-class UserSignupTest(TransactionTestCase):
+class UserSignupTest(TestCase):
     def setUp(self):
         User.objects.create_user(
             name = 'test1',
@@ -27,19 +27,6 @@ class UserSignupTest(TransactionTestCase):
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {'message' : 'signup success'})
-    
-    def test_email_already_exist(self):
-        client = Client()
-        form = {
-            'name'  : 'test1',
-            'email' : 'test1@gmail.com',
-            'is_doctor' : 'False',
-            'password' : '1q2w3e4r'
-        }	
-	    
-        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {'message' : 'email is already exists'})
 
     def test_keyerror(self):
         client = Client()
@@ -104,3 +91,28 @@ class UserSignupTest(TransactionTestCase):
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'must have user password'})
+
+class UserSignupIntergrityErrorTest(TransactionTestCase):
+    def setUp(self):
+        User.objects.create_user(
+            name = 'test1',
+            email = 'test1@gmail.com',
+            is_doctor = 'False',
+            password = '1q2w3e4r'
+        )
+    
+    def tearDown(self):
+        User.objects.all().delete()
+    
+    def test_email_already_exist(self):
+        client = Client()
+        form = {
+            'name'  : 'test1',
+            'email' : 'test1@gmail.com',
+            'is_doctor' : 'False',
+            'password' : '1q2w3e4r'
+        }	
+	    
+        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'email is already exists'})
