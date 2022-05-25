@@ -1,9 +1,10 @@
-from django.urls import path
+from django.urls import path, include
 from django.conf.urls.static import static
+
 from voicedoc import settings
 
 urlpatterns = [
-
+    path('users',include('users.urls')),
 ]
 
 if settings.DEBUG:
