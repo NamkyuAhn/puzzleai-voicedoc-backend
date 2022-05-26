@@ -135,6 +135,14 @@ class UserValidationTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'not in email format'})
     
+    def test_email_validation_keyerror(self):
+        client = Client()
+        form = {}	
+	    
+        response = client.post('/users/email_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'KeyError'})
+
     def test_password_validation_error(self):
         client = Client()
         form = {'password' : '1q2w3e4r'}	
@@ -150,3 +158,11 @@ class UserValidationTest(TestCase):
         response = client.post('/users/password_check', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'not in password format'})
+
+    def test_password_validation_keyerror(self):
+        client = Client()
+        form = {}	
+	    
+        response = client.post('/users/password_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'KeyError'})

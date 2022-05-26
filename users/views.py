@@ -54,6 +54,9 @@ class EmailValidationView(View):
             e = str(e)[2:-2]
             return JsonResponse({'message' : f'{e}'}, status = 400)
 
+        except KeyError:
+            return JsonResponse({'message' : 'KeyError'}, status = 400)
+
 class PasswordValidationView(View):
     def post(self, request):
         try:
@@ -65,3 +68,6 @@ class PasswordValidationView(View):
         except ValidationError as e:
             e = str(e)[2:-2]
             return JsonResponse({'message' : f'{e}'}, status = 400)
+
+        except KeyError:
+            return JsonResponse({'message' : 'KeyError'}, status = 400)
