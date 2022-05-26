@@ -82,10 +82,12 @@ class SigninView(View):
 
         if user is not None:
             if user.is_doctor == True:
+                #의사가 환자앱에서 로그인하면 거부/무조건 거부 x
                 return JsonResponse({'message' : 'please signin on app for doctor'}, status = 400)
 
             request.session['user_id'] = user.id
-            return JsonResponse({'message' : 'signin success'}, status = 200)
+            print(request.META['HTTP_USER_AGENT'])
+            return JsonResponse({'message' : 'signin success', 'user_agent' : request.META['HTTP_USER_AGENT']}, status = 200)
         else:
             return JsonResponse({'message' : 'check email or password'}, status = 400)
 

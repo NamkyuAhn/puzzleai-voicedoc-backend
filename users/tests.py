@@ -200,7 +200,7 @@ class UserSigninTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'check email or password'})
 
-    def test_doctor_signin(self):
+    def test_doctor_signin(self):#웹 앱 구분?
         client = Client()
         form = {'email' : 'doctor@gmail.com', 'password' : '1q2w3e4r'}
 
