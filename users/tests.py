@@ -190,7 +190,7 @@ class UserSigninTest(TestCase):
 
         response = client.post('/users/signin', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'message' : 'login success'})
+        self.assertEqual(response.json(), {'message' : 'signin success'})
 
     def test_user_signin_fail(self):
         client = Client()
@@ -200,10 +200,10 @@ class UserSigninTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'check email or password'})
 
-    def test_doctor_login(self):
+    def test_doctor_signin(self):
         client = Client()
         form = {'email' : 'doctor@gmail.com', 'password' : '1q2w3e4r'}
 
         response = client.post('/users/signin', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {'message' : 'please login on app for doctor'})
+        self.assertEqual(response.json(), {'message' : 'please signin on app for doctor'})

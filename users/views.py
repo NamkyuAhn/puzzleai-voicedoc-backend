@@ -3,11 +3,11 @@ import json
 from users.models     import User
 from users.validation import Validation
 
-from django.views                        import View
-from django.http                         import JsonResponse, HttpResponse
-from django.db.utils                     import IntegrityError
-from django.core.exceptions              import ValidationError
-from django.contrib.auth                 import authenticate, logout
+from django.views           import View
+from django.http            import JsonResponse, HttpResponse
+from django.db.utils        import IntegrityError
+from django.core.exceptions import ValidationError
+from django.contrib.auth    import authenticate, logout
 
 class SignupView(View):
     def post(self, request):
@@ -82,10 +82,10 @@ class SigninView(View):
 
         if user is not None:
             if user.is_doctor == True:
-                return JsonResponse({'message' : 'please login on app for doctor'}, status = 400)
+                return JsonResponse({'message' : 'please signin on app for doctor'}, status = 400)
 
             request.session['user_id'] = user.id
-            return JsonResponse({'message' : 'login success'}, status = 200)
+            return JsonResponse({'message' : 'signin success'}, status = 200)
         else:
             return JsonResponse({'message' : 'check email or password'}, status = 400)
 
