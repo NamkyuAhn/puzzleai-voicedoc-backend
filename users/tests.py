@@ -1,6 +1,7 @@
 import json
 
 from django.test  import Client, TransactionTestCase, TestCase
+
 from users.models import User
 
 class UserSignupTest(TestCase):
@@ -9,7 +10,7 @@ class UserSignupTest(TestCase):
             name = 'test1',
             email = 'test1@gmail.com',
             is_doctor = 'False',
-            password = '1q2w3e4r!'
+            password = '1q2w3e4r'
         )
 
     def tearDown(self):
@@ -116,3 +117,36 @@ class UserSignupIntergrityErrorTest(TransactionTestCase):
         response = client.post('/users/signup', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'email is already exists'})
+
+class UserValidationTest(TestCase):
+    def test_email_validation_pass(self):
+        client = Client()
+        form = {'email' : 'test1@gmail.com'}
+
+        response = client.post('/users/email_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'message' : 'email validation pass'})
+
+    def test_email_validation_error(self):
+        client = Client()
+        form = {'email' : 'test2gmail.com'}	
+	    
+        response = client.post('/users/email_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'not in email format'})
+    
+    def test_password_validation_error(self):
+        client = Client()
+        form = {'password' : '1q2w3e4r'}	
+	    
+        response = client.post('/users/password_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'message' : 'password validation pass'})
+
+    def test_password_validation_error(self):
+        client = Client()
+        form = {'password' : '1234'}	
+	    
+        response = client.post('/users/password_check', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'not in password format'})
