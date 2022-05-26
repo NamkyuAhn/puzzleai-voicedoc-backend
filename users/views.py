@@ -30,10 +30,43 @@ class SignupView(View):
 
         except KeyError:
             return JsonResponse({'message' : 'KeyError'}, status = 400)
+
         except IntegrityError:
             return JsonResponse({'message' : 'email is already exists'}, status = 400)
+
         except ValueError as e:
             return JsonResponse({'message' : f'{e}'}, status = 400)
+
         except ValidationError as e:
             e = str(e)[2:-2]
             return JsonResponse({'message' : f'{e}'}, status = 400)
+
+class EmailValidationView(View):
+    def post(self, request):
+        try:
+            data      = json.loads(request.body)
+            email     = data['email']
+            Validation.email_validate(email)
+            return JsonResponse({'message' : 'email validation pass'}, status = 200)
+
+        except ValidationError as e:
+            e = str(e)[2:-2]
+            return JsonResponse({'message' : f'{e}'}, status = 400)
+
+        except KeyError:
+            return JsonResponse({'message' : 'KeyError'}, status = 400)
+
+class PasswordValidationView(View):
+    def post(self, request):
+        try:
+            data      = json.loads(request.body)
+            password  = data['password']
+            Validation.password_validate(password)
+            return JsonResponse({'message' : 'password validation pass'}, status = 200)
+            
+        except ValidationError as e:
+            e = str(e)[2:-2]
+            return JsonResponse({'message' : f'{e}'}, status = 400)
+
+        except KeyError:
+            return JsonResponse({'message' : 'KeyError'}, status = 400)
