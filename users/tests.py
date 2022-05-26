@@ -1,7 +1,6 @@
 import json
 
 from django.test  import Client, TransactionTestCase, TestCase
-
 from users.models import User
 
 class UserSignupTest(TestCase):
