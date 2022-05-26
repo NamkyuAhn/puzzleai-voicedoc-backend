@@ -3,10 +3,11 @@ import json
 from users.models     import User
 from users.validation import Validation
 
-from django.views           import View
-from django.http            import JsonResponse
-from django.db.utils        import IntegrityError
-from django.core.exceptions import ValidationError
+from django.views                        import View
+from django.http                         import JsonResponse, HttpResponse
+from django.db.utils                     import IntegrityError
+from django.core.exceptions              import ValidationError
+from django.contrib.auth                 import authenticate, logout
 
 class SignupView(View):
     def post(self, request):
@@ -70,3 +71,25 @@ class PasswordValidationView(View):
 
         except KeyError:
             return JsonResponse({'message' : 'KeyError'}, status = 400)
+
+class SigninView(View):
+    def post(self, request):
+        data     = json.loads(request.body)
+        email    = data['email']
+        password = data['password']
+
+        user = authenticate(email=email, password=password)
+
+        if user is not None:
+            if user.is_doctor == True:
+                return JsonResponse({'message' : 'please login on app for doctor'}, status = 400)
+
+            request.session['user_id'] = user.id
+            return JsonResponse({'message' : 'login success'}, status = 200)
+        else:
+            return JsonResponse({'message' : 'check email or password'}, status = 400)
+
+class Logout(View):
+    def post(self, request):
+        logout(request)
+        return HttpResponse("You're logged out.")
