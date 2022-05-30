@@ -1,7 +1,7 @@
 import pymysql, os
 
 from pathlib     import Path
-from my_settings import SECRET_KEY, DATABASES, DEBUG
+from my_settings import SECRET_KEY, DATABASES, DEBUG, SECRET, ALGORITHM
 
 pymysql.install_as_MySQLdb()
 
@@ -149,3 +149,9 @@ AUTH_USER_MODEL = 'users.User'
 
 SESSION_COOKIE_AGE = 600
 SESSION_SAVE_EVERY_REQUEST = True	
+
+#jwt
+
+SECRET = SECRET
+
+ALGORITHM = ALGORITHM
