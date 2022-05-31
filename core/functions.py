@@ -13,12 +13,12 @@ def jwt_generator(user_id):
     return encoded
 
 def jwt_decoder(token):
-    decoded = jwt.decode(token, SECRET, algorithms = ALGORITHM)
-    if token == None:
-        raise JsonResponse({'message' : 'token value is None'}, status = 400)
-    return decoded
+    try: 
+        decoded = jwt.decode(token, SECRET, algorithms = ALGORITHM)
+        return decoded
+    except jwt.exceptions.ExpiredSignatureError:
+        raise KeyError
     
-
 def signin_decorator(func):
     def wrapper(self, request, *args, **kwargs):
         try:
