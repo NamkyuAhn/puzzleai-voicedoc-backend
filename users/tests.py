@@ -192,7 +192,7 @@ class UserSigninTest(TestCase):
     def test_doctor_signin_success(self):
         client = Client(HTTP_USER_AGENT='Chrome/101.0.4951.64')
         form = {'email' : 'doctor@gmail.com', 'password' : '1q2w3e4r'}
-        user_id = User.objects.get(email = 'patient@gmail.com').id
+        user_id = User.objects.get(email = 'doctor@gmail.com').id
 
         response = client.post('/users/signin', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 200)
