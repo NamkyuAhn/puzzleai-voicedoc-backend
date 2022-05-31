@@ -56,4 +56,3 @@ class Subject(models.Model):
 
     class Meta:
         db_table = 'subjects'
-

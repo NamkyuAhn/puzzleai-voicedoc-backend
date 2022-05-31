@@ -92,7 +92,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'ASIA/SEOUL'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
@@ -146,6 +146,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 #Auth
 
 AUTH_USER_MODEL = 'users.User'
+
+LOGIN_URL = '/users/signin'
 
 SESSION_COOKIE_AGE = 600
 SESSION_SAVE_EVERY_REQUEST = True	

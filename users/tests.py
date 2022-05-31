@@ -2,6 +2,7 @@ import json
 
 from django.test  import Client, TransactionTestCase, TestCase
 from users.models import User
+from core.functions import jwt_generator
 
 class UserSignupTest(TestCase):
     def setUp(self):
@@ -66,6 +67,32 @@ class UserSignupTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'must have user is_doctor'})
     
+    def test_email_validation_error(self):
+        client = Client()
+        form = {
+            'name'      : 'test2',
+            'email'     : 'test2gmail.com',
+            'is_doctor' : 'False',
+            'password'  : '1q2w3e4r'
+        }	
+	    
+        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'not in email format'})
+    
+    def test_password_validation_error(self):
+        client = Client()
+        form = {
+            'name'      : 'test2',
+            'email'     : 'test2@gmail.com',
+            'is_doctor' : 'False',
+            'password'  : '1234'
+        }	
+	    
+        response = client.post('/users/signup', json.dumps(form), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'not in password format'})
+
 class UserSignupIntergrityErrorTest(TransactionTestCase):
     def setUp(self):
         User.objects.create_user(
@@ -148,10 +175,11 @@ class UserSigninTest(TestCase):
     def test_user_signin_success(self):
         client = Client()
         form = {'email' : 'patient@gmail.com', 'password' : '1q2w3e4r'}
+        user_id = User.objects.get(email = 'patient@gmail.com').id
 
         response = client.post('/users/signin', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'message' : 'signin success'})
+        self.assertEqual(response.json(), {'message' : 'signin success', 'token' : jwt_generator(user_id)})
 
     def test_user_signin_fail(self):
         client = Client()
@@ -161,13 +189,14 @@ class UserSigninTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'check email or password'})
 
-    def test_doctor_signin_success(self):#웹 앱 구분?
+    def test_doctor_signin_success(self):
         client = Client(HTTP_USER_AGENT='Chrome/101.0.4951.64')
         form = {'email' : 'doctor@gmail.com', 'password' : '1q2w3e4r'}
+        user_id = User.objects.get(email = 'patient@gmail.com').id
 
         response = client.post('/users/signin', json.dumps(form), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'message' : 'signin success for doctor'})
+        self.assertEqual(response.json(), {'message' : 'signin success for doctor', 'token' : jwt_generator(user_id)})
 
     def test_doctor_signin_fail(self):
         client = Client(HTTP_USER_AGENT='Darwin')

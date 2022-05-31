@@ -1,14 +1,17 @@
-import json
-import jwt 
 
-from users.models    import User
-from core.functions  import jwt_generator, jwt_decoder
- 
-from django.views           import View
-from django.http            import JsonResponse, HttpResponse
-from django.db.utils        import IntegrityError
-from django.core.exceptions import ValidationError
-from django.contrib.auth    import authenticate
+import json
+
+from datetime import datetime, timedelta
+from users.models     import User
+from core.functions   import jwt_generator, signin_decorator
+from core.validations import Validation
+
+from django.views               import View
+from django.http                import JsonResponse, HttpResponse
+from django.db.utils            import IntegrityError
+from django.core.exceptions     import ValidationError
+from django.contrib.auth        import authenticate
+from django.contrib.auth.models import Group
 
 class SignupView(View):
     def post(self, request):
@@ -19,12 +22,16 @@ class SignupView(View):
             is_doctor = data['is_doctor']
             password  = data['password']
 
+            Validation.email_validate(email)
+            Validation.password_validate(password)
+            
             User.objects.create_user(
                 name      = name,
                 password  = password,
                 email     = email,
                 is_doctor = is_doctor
             )
+
             return JsonResponse({'message' : 'signup success'}, status = 201)
 
         except KeyError:
@@ -34,6 +41,10 @@ class SignupView(View):
             return JsonResponse({'message' : 'email is already exists'}, status = 400)
 
         except ValueError as e:
+            return JsonResponse({'message' : f'{e}'}, status = 400)
+
+        except ValidationError as e:
+            e = str(e)[2:-2]
             return JsonResponse({'message' : f'{e}'}, status = 400)
 
 class EmailUniqueCheckView(View):
@@ -47,21 +58,6 @@ class EmailUniqueCheckView(View):
         except KeyError:
             return JsonResponse({'message' : 'KeyError'}, status = 400)
 
-class PasswordValidationView(View):
-    def post(self, request):
-        try:
-            data      = json.loads(request.body)
-            password  = data['password']
-            Validation.password_validate(password)
-            return JsonResponse({'message' : 'password validation pass'}, status = 200)
-            
-        except ValidationError as e:
-            e = str(e)[2:-2]
-            return JsonResponse({'message' : f'{e}'}, status = 400)
-
-        except KeyError:
-            return JsonResponse({'message' : 'KeyError'}, status = 400)
-
 class SigninView(View):
     def post(self, request):
         data     = json.loads(request.body)
@@ -69,7 +65,6 @@ class SigninView(View):
         password = data['password']
 
         user = authenticate(email=email, password=password)
-        payload = {}
 
         if user is not None:
             if user.is_doctor == True: 
@@ -78,20 +73,19 @@ class SigninView(View):
                 
                 for browser in browser_list:
                     if browser in app_checking:
-                        jwt_generator(payload, user.id)
-                        return JsonResponse({'message' : 'signin success for doctor', 'token' : jwt_generator(payload, user.id)}, status = 200)
+                        return JsonResponse({'message' : 'signin success for doctor', 'token' : jwt_generator(user.id)}, status = 200)
                     else: 
                         return JsonResponse({'message' : 'signin failed because you are not patient'}, status = 400)
-            
-            return JsonResponse({'message' : 'signin success', 'token' : jwt_generator(payload, user.id)}, status = 200)
+            return JsonResponse({'message' : 'signin success', 'token' : jwt_generator(user.id)}, status = 200)
             
         else:
             return JsonResponse({'message' : 'check email or password'}, status = 400)
 
-class Check(View):
+class UserIdCheck(View):
+    @signin_decorator
     def post(self, request):
         try:
-            token = request.headers.get("Authorization", None)
-            return JsonResponse({'your id' : jwt_decoder(token)}, status = 200)
+            return JsonResponse({'your id' : request.user.id, 'is doctor' : request.user.is_doctor,
+                                 'exp' : request.payload['exp'], 'now' : datetime.utcnow()+timedelta(seconds=1)}, status = 200)
         except KeyError:
             return HttpResponse('no token in request')
