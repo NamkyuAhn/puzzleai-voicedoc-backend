@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime, timedelta
 from users.models     import User
-from core.functions   import jwt_generator, signin_decorator
+from core.functions   import jwt_decoder, jwt_generator, signin_decorator
 from core.validations import Validation
 
 from django.views               import View
@@ -85,7 +85,6 @@ class UserIdCheck(View):
     @signin_decorator
     def post(self, request):
         try:
-            return JsonResponse({'your id' : request.user.id, 'is doctor' : request.user.is_doctor,
-                                 'exp' : request.payload['exp'], 'now' : datetime.utcnow()+timedelta(seconds=1)}, status = 200)
+            return JsonResponse({'your id' : request.user.id, 'exp' : request.payload['exp']}, status = 200)
         except KeyError:
-            return HttpResponse('no token in request')
+            return HttpResponse('Token KeyError')
