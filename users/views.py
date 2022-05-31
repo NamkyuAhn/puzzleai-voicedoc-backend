@@ -11,7 +11,7 @@ from django.http                import JsonResponse, HttpResponse
 from django.db.utils            import IntegrityError
 from django.core.exceptions     import ValidationError
 from django.contrib.auth        import authenticate
-from django.contrib.auth.models import Group
+
 
 class SignupView(View):
     def post(self, request):
