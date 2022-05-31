@@ -14,7 +14,10 @@ def jwt_generator(user_id):
 
 def jwt_decoder(token):
     decoded = jwt.decode(token, SECRET, algorithms = ALGORITHM)
+    if token == None:
+        raise JsonResponse({'message' : 'token value is None'}, status = 400)
     return decoded
+    
 
 def signin_decorator(func):
     def wrapper(self, request, *args, **kwargs):
@@ -25,7 +28,7 @@ def signin_decorator(func):
             return func(self, request, *args, **kwargs)
 
         except User.DoesNotExist:
-            return JsonResponse({'message' : 'IVALID_USER'},status=401)
+            return JsonResponse({'message' : 'IVALID_USER'}, status=401)
         except KeyError:
             return JsonResponse({'message' : 'signin time expired'})
     return wrapper
