@@ -1,13 +1,14 @@
 import jwt
-import datetime
+
+from datetime import datetime, timedelta
 
 from django.http  import JsonResponse
 
 from users.models      import User
 from voicedoc.settings import SECRET, ALGORITHM
 
-def jwt_generator(payload, user_id):
-    payload['user_id'] = user_id
+def jwt_generator(user_id):
+    payload = {'user_id' : user_id, 'exp' : datetime.utcnow()+ timedelta(hours=1)}
     encoded = jwt.encode(payload, SECRET, algorithm = ALGORITHM)
     return encoded
 
@@ -18,8 +19,9 @@ def jwt_decoder(token):
 def signin_decorator(func):
     def wrapper(self, request, *args, **kwargs):
         try:
-            user_id = request.session['user_id']
-            request.user = User.objects.get(id=user_id)
+            token = request.headers.get("Authorization", None)
+            request.user = User.objects.get(id=jwt_decoder(token)['user_id'])
+            request.payload = jwt_decoder(token)
             return func(self, request, *args, **kwargs)
 
         except User.DoesNotExist:
@@ -31,8 +33,8 @@ def signin_decorator(func):
 def patient_decorator(func):
     def wrapper(self, request, *args, **kwargs):
         try:
-            user_id = request.session['user_id']
-            request.user = User.objects.get(id=user_id)
+            token = request.headers.get("Authorization", None)
+            request.user = User.objects.get(id=jwt_decoder(token)['user_id'])
             if request.user.is_doctor == True : 
                 return JsonResponse({'message': "doctor can't access to patient menu"}, status = 403)
             return func(self, request, *args, **kwargs)
