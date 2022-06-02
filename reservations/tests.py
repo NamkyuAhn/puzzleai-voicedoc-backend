@@ -1,5 +1,10 @@
+from users.models      import Subject, Doctor, User, Hospital
+from voicedoc.settings import IP_ADDRESS, TEST_TOKEN
+from core.functions    import jwt_generator
+
 from django.test import TestCase , Client
-from users.models import Subject, Doctor, User, Hospital
+from django.db.models.functions import Concat
+from django.db.models           import CharField, Value
 
 class SubjectAndDoctorLoadTest(TestCase):
     def setUp(self):
@@ -16,7 +21,7 @@ class SubjectAndDoctorLoadTest(TestCase):
         Hospital.objects.create(
             name = '병원 1'
         )
-        user = User.objects.get(is_doctor = 'True')
+        user = User.objects.get(is_doctor = True)
         hospital = Hospital.objects.get(name = '병원 1')
         subject = Subject.objects.get(name = '과목 1')
 
@@ -28,6 +33,7 @@ class SubjectAndDoctorLoadTest(TestCase):
             hospital_id = hospital.id,
             subject_id = subject.id,
         )
+
     def tearDown(self):
         Subject.objects.all().delete()
         User.objects.all().delete()
@@ -36,33 +42,39 @@ class SubjectAndDoctorLoadTest(TestCase):
     
     def test_subject_loading(self):
         client = Client()
-        response = client.get('/reservations/subject')
-        subjects  = Subject.objects.all().prefetch_related("doctor_set")
-        result = []
+        user = User.objects.get(name='의사 1')
+        token = jwt_generator(user.id)
+        header = {'HTTP_Authorization' : token}
+        response = client.get('/reservations/subject', **header)
 
-        for subject in subjects:
-            file_location = '192.168.0.114:8000/media/' + str(subject.image)
-            result.append({
-                "subject_id" : subject.id,
-                "subject_name" : subject.name,
-                "subject_iamge" : file_location
-            })
+        subjects  = Subject.objects.annotate(
+            file_location = Concat(
+                Value(IP_ADDRESS), 'image', 
+                    output_field = CharField()
+                )
+            )\
+        .values('id', 'name', 'file_location')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"result" : result})
+        self.assertEqual(response.json(), {"result" : list(subjects)})
 
     def test_subject_doctor_loading(self):
         client = Client()
-        response = client.get('/reservations/subject/1')
-        doctor = Doctor.objects.get(user_id = 1)
+        user = User.objects.get(name='의사 1')
+        token = jwt_generator(user.id)
+        header = {'HTTP_Authorization' : token}
+        response = client.get('/reservations/subject/1', **header)
 
-        file_location = '192.168.0.114:8000/media/' + str(doctor.profile_image)
-        result = [{
-            "name" : doctor.user.name,
-            "subject" : doctor.subject.name,
-            "hospital" : doctor.hospital.name,
-            "profile_image" : file_location
-        }]
+        doctors = Doctor.objects.filter(subject_id = 1)\
+        .select_related('subject', 'hospital', 'user')\
+        .annotate(
+            file_location = Concat(
+                Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
+            name          = Concat('user__name', Value(''),output_field = CharField()),
+            hospital_name = Concat('hospital__name', Value(''),output_field = CharField()),
+            subject_name  = Concat('subject__name', Value(''),output_field = CharField()),
+            )\
+        .values('id', 'name', 'file_location', 'hospital_name', 'subject_name')  
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"result" : result})
+        self.assertEqual(response.json(), {"result" : list(doctors)})

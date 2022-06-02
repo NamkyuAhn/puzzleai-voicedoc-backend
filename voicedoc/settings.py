@@ -1,7 +1,7 @@
 import pymysql, os
 
 from pathlib     import Path
-from my_settings import SECRET_KEY, DATABASES, DEBUG, SECRET, ALGORITHM
+from my_settings import SECRET_KEY, DATABASES, DEBUG, SECRET, ALGORITHM, IP_ADDRESS, TEST_TOKEN
 
 pymysql.install_as_MySQLdb()
 
@@ -143,6 +143,8 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+IP_ADDRESS = IP_ADDRESS
+
 #Auth
 
 AUTH_USER_MODEL = 'users.User'
@@ -157,3 +159,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 SECRET = SECRET
 
 ALGORITHM = ALGORITHM
+
+#test
+TEST_TOKEN = TEST_TOKEN

@@ -1,36 +1,35 @@
-from users.models   import Subject, Doctor
-from core.functions import signin_decorator
+from users.models      import Subject, Doctor
+from core.functions    import signin_decorator
+from voicedoc.settings import IP_ADDRESS
 
-from django.views               import View
-from django.http                import JsonResponse
+from django.views import View
+from django.http  import JsonResponse
+from django.db.models.functions import Concat
+from django.db.models           import CharField, Value
 
 class SubjectView(View):
     @signin_decorator
     def get(self, request):
-        subjects  = Subject.objects.all().prefetch_related("doctor_set")
-        result = []
-
-        for subject in subjects:
-            file_location = '192.168.0.114:8000/media/' + str(subject.image)
-            result.append({
-                "subject_id" : subject.id,
-                "subject_name" : subject.name,
-                "subject_iamge" : file_location
-            })
-        return JsonResponse({"result" : result}, status = 200)
+        subjects  = Subject.objects.annotate(
+            file_location = Concat(
+                Value(IP_ADDRESS), 'image', 
+                    output_field = CharField()
+                )
+            )\
+        .values('id', 'name', 'file_location')        
+        return JsonResponse({"result" : list(subjects)}, status = 200)
 
 class DoctorView(View):
     @signin_decorator
     def get(self, request, subject_id):
-        doctors = Doctor.objects.filter(subject_id = subject_id).select_related('subject', 'hospital', 'user')
-        result = []
-
-        for doctor in doctors:
-            file_location = '192.168.0.114:8000/media/' + str(doctor.profile_image)
-            result.append({
-                "name" : doctor.user.name,
-                "subject" : doctor.subject.name,
-                "hospital" : doctor.hospital.name,
-                "profile_image" : file_location
-            })
-        return JsonResponse({'result' : result}, status = 200)
+        doctors = Doctor.objects.filter(subject_id = subject_id)\
+        .select_related('subject', 'hospital', 'user')\
+        .annotate(
+            file_location = Concat(
+                Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
+            name          = Concat('user__name', Value(''),output_field = CharField()),
+            hospital_name = Concat('hospital__name', Value(''),output_field = CharField()),
+            subject_name  = Concat('subject__name', Value(''),output_field = CharField()),
+            )\
+        .values('id', 'name', 'file_location', 'hospital_name', 'subject_name')  
+        return JsonResponse({'result' : list(doctors)}, status = 200)
