@@ -5,6 +5,7 @@ from django.views               import View
 from django.http                import JsonResponse
 
 class SubjectView(View):
+    @signin_decorator
     def get(self, request):
         subjects  = Subject.objects.all().prefetch_related("doctor_set")
         result = []
@@ -18,13 +19,8 @@ class SubjectView(View):
             })
         return JsonResponse({"result" : result}, status = 200)
 
-    def post(self, request):
-        name  = request.POST['name']
-        image = request.FILES.__getitem__('image')
-        Subject.objects.create(name = name, image = image)
-        return JsonResponse({'message' : 'success'}, status = 201)
-
 class DoctorView(View):
+    @signin_decorator
     def get(self, request, subject_id):
         doctors = Doctor.objects.filter(subject_id = subject_id).select_related('subject', 'hospital', 'user')
         result = []
