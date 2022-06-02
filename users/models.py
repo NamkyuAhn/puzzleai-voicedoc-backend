@@ -52,7 +52,8 @@ class Hospital(models.Model):
         db_table = 'hospitals'
 
 class Subject(models.Model):
-    name = models.CharField(max_length=30)
+    name  = models.CharField(max_length=30)
+    image = models.FileField(upload_to="subject_images", null=True)
 
     class Meta:
         db_table = 'subjects'
