@@ -1,9 +1,7 @@
-
 import json
 
-from datetime import datetime, timedelta
 from users.models     import User
-from core.functions   import jwt_decoder, jwt_generator, signin_decorator
+from core.functions   import jwt_generator, signin_decorator
 from core.validations import Validation
 
 from django.views               import View

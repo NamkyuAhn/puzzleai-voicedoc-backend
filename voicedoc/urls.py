@@ -1,12 +1,11 @@
 from django.urls import path, include
 from django.conf.urls.static import static
-from users.views import SigninView
 
 from voicedoc import settings
 
 urlpatterns = [
     path('users',include('users.urls')),
-    path('accounts/login', SigninView.as_view())
+    path('reservations', include('reservations.urls')),
 ]
 
 if settings.DEBUG:
