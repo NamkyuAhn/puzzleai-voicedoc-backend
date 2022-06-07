@@ -39,11 +39,28 @@ class Doctor(models.Model):
     hospital      = models.ForeignKey('users.Hospital', on_delete=models.SET_NULL, null = True)
     subject       = models.ForeignKey('users.Subject', on_delete=models.SET_NULL, null = True)
     profile_image = models.FileField(upload_to="doctor_profile_images")
-    working_days  = models.CharField(max_length=100)
-    working_times = models.CharField(max_length=500)
     
     class Meta:
         db_table = 'doctors'
+
+class DoctorDay(models.Model):
+    doctor    = models.ForeignKey('users.Doctor', on_delete=models.CASCADE,
+                                  related_name = 'doctor_day')
+    year      = models.CharField(max_length=5)
+    month     = models.CharField(max_length=3)
+    days      = models.CharField(max_length=500)
+
+    class Meta:
+        db_table = 'doctor_days'
+
+class DoctorTime(models.Model):
+    doctor = models.ForeignKey('users.Doctor', on_delete=models.CASCADE,
+                                related_name = 'doctor_time')
+    days   = models.CharField(max_length=20)
+    times  = models.CharField(max_length=500)
+
+    class Meta:
+        db_table = 'doctor_times'
 
 class Hospital(models.Model):
     name = models.CharField(max_length=30)
