@@ -44,7 +44,7 @@ class DoctorWorkView(View):
         month = request.GET.get('month', str(today.month))
         day   = request.GET.get('day', None)
         date = request.GET.get('date', None)
-        if date != None:
+        if (date != None) and day != None:
             date = f'{year}-{month}-{date}'
             reservations = Reservation.objects.filter(doctor_id = doctor_id, date = date)
             working_time = DoctorTime.objects.get(days = day).times
@@ -54,9 +54,10 @@ class DoctorWorkView(View):
             return JsonResponse({'working_times' : working_times,
                                  'expired_times' : expired_time}, status = 200)
 
-        working_days_list = DoctorDay.objects.get(doctor_id = doctor_id, 
+        working_day = DoctorDay.objects.get(doctor_id = doctor_id, 
                                 year = year, month = month).days
-        working_days = {'working_days' : working_days_list}
+        time_list = working_day.replace('"','').split(",")
+        return JsonResponse({'result' : time_list}, status = 200)
               
                     
 
