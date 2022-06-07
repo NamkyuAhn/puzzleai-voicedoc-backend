@@ -28,8 +28,6 @@ class SubjectAndDoctorLoadTest(TestCase):
         Doctor.objects.create(
             user_id = user.id,
             profile_image = 'image',
-            working_days = 'days',
-            working_times = 'times',
             hospital_id = hospital.id,
             subject_id = subject.id,
         )

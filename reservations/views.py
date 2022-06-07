@@ -1,6 +1,9 @@
-from users.models      import Subject, Doctor
-from core.functions    import signin_decorator
-from voicedoc.settings import IP_ADDRESS
+import datetime
+
+from reservations.models import Reservation
+from users.models        import Subject, Doctor, DoctorDay, DoctorTime
+from core.functions      import signin_decorator
+from voicedoc.settings   import IP_ADDRESS
 
 from django.views import View
 from django.http  import JsonResponse
@@ -19,7 +22,7 @@ class SubjectView(View):
         .values('id', 'name', 'file_location')        
         return JsonResponse({"result" : list(subjects)}, status = 200)
 
-class DoctorView(View):
+class DoctorListView(View):
     @signin_decorator
     def get(self, request, subject_id):
         doctors = Doctor.objects.filter(subject_id = subject_id)\
@@ -33,3 +36,29 @@ class DoctorView(View):
             )\
         .values('id', 'name', 'file_location', 'hospital_name', 'subject_name')  
         return JsonResponse({'result' : list(doctors)}, status = 200)
+
+class DoctorWorkView(View):
+    def get(self, request, doctor_id):
+        today = datetime.date.today()
+        year  = request.GET.get('year', str(today.year))
+        month = request.GET.get('month', str(today.month))
+        day   = request.GET.get('day', None)
+        date = request.GET.get('date', None)
+        if date != None:
+            date = f'{year}-{month}-{date}'
+            reservations = Reservation.objects.filter(doctor_id = doctor_id, date = date)
+            working_time = DoctorTime.objects.get(days = day).times
+            time_list = working_time.split(',')
+            working_times = {'times' : time_list}
+            expired_time = [reservation.time for reservation in reservations]
+            return JsonResponse({'working_times' : working_times,
+                                 'expired_times' : expired_time}, status = 200)
+
+        working_days_list = DoctorDay.objects.get(doctor_id = doctor_id, 
+                                year = year, month = month).days
+        working_days = {'working_days' : working_days_list}
+              
+                    
+
+            
+
