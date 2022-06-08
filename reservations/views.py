@@ -13,7 +13,7 @@ from django.db.models           import CharField, Value
 class SubjectView(View):
     @signin_decorator
     def get(self, request):
-        subjects  = Subject.objects.annotate(
+        subjects = Subject.objects.annotate(
             file_location = Concat(
                 Value(IP_ADDRESS), 'image', 
                     output_field = CharField()
@@ -64,10 +64,10 @@ class DoctorWorkView(View):
             return JsonResponse({'result' : result}, status = 200)
 
         except DoctorDay.DoesNotExist:
-            return HttpResponse("조건에 부합하는 의사 근무날짜 없음")
+            return JsonResponse({'message' : "조건에 부합하는 의사 근무날짜 없음"}, status = 400)
 
         except DoctorTime.DoesNotExist:
-            return HttpResponse("조건의 부합하는 의사 근무시간 없음")
+            return JsonResponse({'message' : "조건의 부합하는 의사 근무시간 없음"}, status = 400)
               
                     
 
