@@ -47,4 +47,3 @@ def patient_decorator(func):
         except KeyError:
             return JsonResponse({'message' : 'signin time expired'})
     return wrapper
-

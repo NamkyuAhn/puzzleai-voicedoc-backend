@@ -6,7 +6,7 @@ from core.functions      import signin_decorator
 from voicedoc.settings   import IP_ADDRESS
 
 from django.views import View
-from django.http  import JsonResponse, HttpResponse
+from django.http  import JsonResponse
 from django.db.models.functions import Concat
 from django.db.models           import CharField, Value
 
@@ -48,6 +48,10 @@ class DoctorWorkView(View):
                 full_day = f'{year}-{month}-{dates}'
                 reservations = Reservation.objects.filter(doctor_id = doctor_id, date = full_day)
                 day = date(int(year), int(month), int(dates)).weekday()
+                day_confirm = DoctorDay.objects.get(doctor_id = doctor_id, 
+                                    year = year, month = month)
+                if str(day) not in day_confirm.days:
+                    return JsonResponse({'message' : f'not working on that day in month {month}'}, status = 400)
                 working_time = DoctorTime.objects.get(days = day).times
                 time_list = working_time.split(',')
                 working_times = {'times' : time_list}
