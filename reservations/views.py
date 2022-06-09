@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, time
 
 from reservations.models import Reservation
 from users.models        import Subject, Doctor, DoctorDay, DoctorTime
@@ -45,28 +45,25 @@ class DoctorWorkView(View):
         dates  = request.GET.get('dates', None)
 
         if dates != None: 
-            full_date = date(int(year), int(month), int(dates))
+            full_date = datetime(int(year), int(month), int(dates))
             current   = datetime.now()
-            current   = date(current.year, current.month, current.day)
-            if current > full_date: #과거시간 조회 못하게
+            if current.day > full_date.day: #과거시간 조회 못하게
                 return JsonResponse({'message' : "you can't read old calaneder"}, status = 400)
 
             reservations  = Reservation.objects.filter(doctor_id = doctor_id, date = full_date)
             working_times = DoctorTime.objects.filter(days = full_date.weekday())
             time_list     = [str(time.times) for time in working_times]
-            expired_time  = [str(reservation.time)[:-3] for reservation in reservations]
+            expired_time  = [reservation.time.strftime("%H:%M") for reservation in reservations]
 
             if len(time_list) == 0: #일 없는날 분기
-                return JsonResponse({'message' : f'not work on {full_date}'}, status = 400)
+                return JsonResponse({'message' : f'not work on {full_date.strftime("%Y-%m-%d")}'}, status = 400)
 
             return JsonResponse({'working_times' : time_list,
                                  'expired_times' : expired_time}, status = 200)
 
         days     = DoctorDay.objects.filter(doctor_id = doctor_id)
-        day_list = []
-        for day in days:
-            if day.date.month == month and day.date.year == year:
-                day_list.append(day.date.weekday())
+        day_list = [day.date.weekday() for day in days 
+                    if day.date.month == month and day.date.year == year]
         return JsonResponse({'result' : list(set(day_list))}, status = 200)
                     
 
