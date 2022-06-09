@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 
 from users.models        import Subject, Doctor, User, Hospital, DoctorDay, DoctorTime
-from reservations.models import Reservation
-from voicedoc.settings   import IP_ADDRESS, TEST_TOKEN
+from reservations.models import Reservation, Status
+from voicedoc.settings   import IP_ADDRESS
 from core.functions      import jwt_generator
 
 from django.test import TestCase , Client
@@ -82,89 +82,167 @@ class SubjectAndDoctorLoadTest(TestCase):
 
 class DateAndTimeLoadTest(TestCase):
     def setUp(self):
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+        full_date = date(year, month, day)
+
         User.objects.create(
-            name = '의사 1',
-            email = 'email@gmail.com',
+            name = '환자1',
+            email = 'patient1@gmail.com',
+            password = '1q2w3e4r',
+            is_doctor = 'False'
+        )
+        User.objects.create(
+            name = '의사1',
+            email = 'doctor1@gmail.com',
             password = '1q2w3e4r',
             is_doctor = 'True'
         )
         Subject.objects.create(
-            name  = "과목 1",
+            name  = "과목1",
             image = "image 예시"
         )
         Hospital.objects.create(
-            name = '병원 1'
+            name = '병원1'
         )
-        user = User.objects.get(is_doctor = True)
-        hospital = Hospital.objects.get(name = '병원 1')
-        subject = Subject.objects.get(name = '과목 1')
+
+        patient = User.objects.get(name='환자1')
+        doc = User.objects.get(name = '의사1')
+        hospital = Hospital.objects.get(name = '병원1')
+        subject = Subject.objects.get(name = '과목1')
         
         Doctor.objects.create(
-            user_id = user.id,
+            user_id = doc.id,
             profile_image = 'image',
             hospital_id = hospital.id,
             subject_id = subject.id,
         )
-        doctor = Doctor.objects.get(profile_image = 'image')
 
+        doctor = Doctor.objects.get(hospital_id = hospital.id)
         DoctorDay.objects.create(
-            days = '0,2,4',
+            date = full_date,
             doctor_id = doctor.id,
-            month = '6',
-            year = '2022'
         )
         DoctorTime.objects.create(
-            days = 2,
-            times = '10:00,11:00,12:00,13:00,14:00,15:00,16:00',
+            days = testday.weekday(),
+            times = '10:00',
             doctor_id = doctor.id
         )
+        DoctorTime.objects.create(
+            days = testday.weekday(),
+            times = '11:00',
+            doctor_id = doctor.id
+        )
+        Status.objects.create(
+            name = '진료대기'
+        )
+
+        status = Status.objects.get(name='진료대기')
+        Reservation.objects.create(
+            symtom = 'asdf',
+            opinion = 'ddd',
+            date = full_date,
+            time = '12:00:00.000000',
+            doctor_id = doctor.id,
+            status_id = status.id,
+            user_id = patient.id
+        )
+        Reservation.objects.create(
+            symtom = 'asdf',
+            opinion = 'ddd',
+            date = full_date,
+            time = '13:00:00.000000',
+            doctor_id = doctor.id,
+            status_id = status.id,
+            user_id = patient.id
+        )
+
     def tearDown(self) -> None:
         return super().tearDown()
 
     def test_workingday_loading_success(self):
-        client = Client()
-        token = TEST_TOKEN
-        header = {'HTTP_Authorization' : token}
-        response = client.get('/reservations/time/1?year=2022&month=6', **header)
+        client    = Client()
+        user      = User.objects.get(name='환자1')
+        token     = jwt_generator(user.id)
+        header    = {'HTTP_Authorization' : token}
 
-        working_day = DoctorDay.objects.get(doctor_id = 1, 
-                                    year = '2022', month = '6').days
-        time_lists = working_day.split(",")
-        result = []
-        for time in time_lists:
-            result.append(int(time))
+        doc       = User.objects.get(name='의사1')
+        doctor    = Doctor.objects.get(user_id = doc.id)
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+        
+        response  = client.get(f'/reservations/time/{doctor.id}?year={year}&month={month}', **header)
+
+        days = DoctorDay.objects.filter(doctor_id = doctor.id)
+        day_list = []
+        for day in days:
+            if day.date.month == month and day.date.year == year:
+                day_list.append(day.date.weekday())
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"result" : result})
-    
-    # def test_workingday_loading_fail(self):
-    #     client = Client()
-    #     token = TEST_TOKEN
-    #     header = {'HTTP_Authorization' : token}
-    #     response = client.get('/reservations/time/1?year=2022&month=6', **header)
-
-    #     working_day = DoctorDay.objects.get(doctor_id = 1, 
-    #                                 year = '2022', month = '9').days
-    #     time_lists = working_day.split(",")
-    #     result = []
-    #     for time in time_lists:
-    #         result.append(int(time))
-    #     self.assertEqual(response.status_code, 400)
-    #     self.assertEqual(response.json(), {'message' : '조건에 부합하는 의사 근무날짜 없음'})
+        self.assertEqual(response.json(), {"result" : list(set(day_list))})
     
     def test_workingtime_loading_success(self):
-        client = Client()
-        token = TEST_TOKEN
-        header = {'HTTP_Authorization' : token}
-        response = client.get('/reservations/time/1?year=2022&month=6&dates=8', **header)
-        full_day = '2022-6-8'
-        reservations = Reservation.objects.filter(doctor_id = 1, date = full_day)
-        day = date(2022, 6, 8).weekday()
-        working_time = DoctorTime.objects.get(days = day).times
-        time_list = working_time.split(',')
-        working_times = {'times' : time_list}
-        expired_time = [reservation.time for reservation in reservations]
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'working_times' : working_times,
-                                           'expired_times' : expired_time})
+        client    = Client()
+        user      = User.objects.get(name='환자1')
+        token     = jwt_generator(user.id)
+        header    = {'HTTP_Authorization' : token}
+
+        doc       = User.objects.get(name='의사1')
+        doctor    = Doctor.objects.get(user_id = doc.id)
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+
+        response  = client.get(f'/reservations/time/{doctor.id}?year={year}&month={month}&dates={day}', **header)
         
+        full_date     = date(year,month,day)
+        reservations  = Reservation.objects.filter(doctor_id = doctor.id, date = full_date)
+        working_times = DoctorTime.objects.filter(days = full_date.weekday())
+        time_list     = [str(time.times) for time in working_times]
+        expired_time  = [str(reservation.time)[:-3] for reservation in reservations]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'working_times' : time_list,
+                                           'expired_times' : expired_time})
+
+    def test_workingtime_loading_fail_oldtime(self):
+        client    = Client()
+        user      = User.objects.get(name='환자1')
+        token     = jwt_generator(user.id)
+        header    = {'HTTP_Authorization' : token}
+
+        doc       = User.objects.get(name='의사1')
+        doctor    = Doctor.objects.get(user_id = doc.id)
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+
+        response  = client.get(f'/reservations/time/{doctor.id}?year={year}&month={month}&dates={day-1}', **header)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : "you can't read old calaneder"})
+
+    def test_workingtime_loading_fail_notworkingday(self):
+        client    = Client()
+        user      = User.objects.get(name='환자1')
+        token     = jwt_generator(user.id)
+        header    = {'HTTP_Authorization' : token}
+
+        doc       = User.objects.get(name='의사1')
+        doctor    = Doctor.objects.get(user_id = doc.id)
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+        full_date = date(year, month, day+1)
+        response  = client.get(f'/reservations/time/{doctor.id}?year={year}&month={month}&dates={day+1}', **header)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : f'not work on {full_date}'})
