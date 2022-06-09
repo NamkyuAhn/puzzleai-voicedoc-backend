@@ -38,6 +38,7 @@ class DoctorListView(View):
         return JsonResponse({'result' : list(doctors)}, status = 200)
 
 class DoctorWorkView(View):
+    @signin_decorator
     def get(self, request, doctor_id):
         try:
             year   = request.GET.get('year')
@@ -47,14 +48,15 @@ class DoctorWorkView(View):
             if dates != None: 
                 full_day = f'{year}-{month}-{dates}'
                 reservations = Reservation.objects.filter(doctor_id = doctor_id, date = full_day)
+
                 day = date(int(year), int(month), int(dates)).weekday()
                 day_confirm = DoctorDay.objects.get(doctor_id = doctor_id, 
                                     year = year, month = month)
                 if str(day) not in day_confirm.days:
-                    return JsonResponse({'message' : f'not working on that day in month {month}'}, status = 400)
+                    return JsonResponse({'message' : f'not working on that day on month {month}'}, status = 400)
+
                 working_time = DoctorTime.objects.get(days = day).times
-                time_list = working_time.split(',')
-                working_times = {'times' : time_list}
+                working_times = {'times' : working_time.split(',')}
                 expired_time = [reservation.time for reservation in reservations]
                 return JsonResponse({'working_times' : working_times,
                                     'expired_times' : expired_time}, status = 200)
