@@ -15,15 +15,18 @@ class SubjectAndDoctorLoadTest(TestCase):
             name = '의사 1',
             email = 'email@gmail.com',
             password = '1q2w3e4r',
-            is_doctor = 'True'
+            is_doctor = True
         )
+
         Subject.objects.create(
             name  = "과목 1",
             image = "image 예시"
         )
+
         Hospital.objects.create(
             name = '병원 1'
         )
+        
         user = User.objects.get(is_doctor = True)
         hospital = Hospital.objects.get(name = '병원 1')
         subject = Subject.objects.get(name = '과목 1')
@@ -88,22 +91,22 @@ class DateAndTimeLoadTest(TestCase):
         day       = testday.day
         full_date = date(year, month, day)
 
-        User.objects.create(
-            name = '환자1',
-            email = 'patient1@gmail.com',
-            password = '1q2w3e4r',
-            is_doctor = 'False'
-        )
-        User.objects.create(
-            name = '의사1',
-            email = 'doctor1@gmail.com',
-            password = '1q2w3e4r',
-            is_doctor = 'True'
-        )
+        User.objects.bulk_create([
+            User(name = '환자1', 
+                 email = 'patient1@gmail.com',
+                 password = '1q2w3e4r',
+                 is_doctor = False),
+            User(name = '의사1', 
+                 email = 'doctor1@gmail.com',
+                 password = '1q2w3e4r',
+                 is_doctor = True)
+        ])
+
         Subject.objects.create(
             name  = "과목1",
             image = "image 예시"
         )
+
         Hospital.objects.create(
             name = '병원1'
         )
@@ -121,43 +124,43 @@ class DateAndTimeLoadTest(TestCase):
         )
 
         doctor = Doctor.objects.get(hospital_id = hospital.id)
+
         DoctorDay.objects.create(
             date = full_date,
             doctor_id = doctor.id,
         )
-        DoctorTime.objects.create(
-            days = testday.weekday(),
-            times = '10:00',
-            doctor_id = doctor.id
-        )
-        DoctorTime.objects.create(
-            days = testday.weekday(),
-            times = '11:00',
-            doctor_id = doctor.id
-        )
+
+        DoctorTime.objects.bulk_create([
+            DoctorTime(days = testday.weekday(),
+                       times = '10:00',
+                       doctor_id = doctor.id),
+            DoctorTime(days = testday.weekday(),
+                       times = '11:00',
+                       doctor_id = doctor.id),
+        ])
+
         Status.objects.create(
             name = '진료대기'
         )
 
         status = Status.objects.get(name='진료대기')
-        Reservation.objects.create(
-            symtom = 'asdf',
-            opinion = 'ddd',
-            date = full_date,
-            time = '12:00:00.000000',
-            doctor_id = doctor.id,
-            status_id = status.id,
-            user_id = patient.id
-        )
-        Reservation.objects.create(
-            symtom = 'asdf',
-            opinion = 'ddd',
-            date = full_date,
-            time = '13:00:00.000000',
-            doctor_id = doctor.id,
-            status_id = status.id,
-            user_id = patient.id
-        )
+
+        Reservation.objects.bulk_create([
+            Reservation(symtom = 'asdf',
+                        opinion = 'ddd',
+                        date = full_date,
+                        time = '12:00:00.000000',
+                        doctor_id = doctor.id,
+                        status_id = status.id,
+                        user_id = patient.id),
+            Reservation(symtom = 'asdf',
+                        opinion = 'ddd',
+                        date = full_date,
+                        time = '13:00:00.000000',
+                        doctor_id = doctor.id,
+                        status_id = status.id,
+                        user_id = patient.id)
+        ])
 
     def tearDown(self) -> None:
         return super().tearDown()
