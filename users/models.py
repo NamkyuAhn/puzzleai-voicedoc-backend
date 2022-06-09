@@ -44,20 +44,26 @@ class Doctor(models.Model):
         db_table = 'doctors'
 
 class DoctorDay(models.Model):
-    doctor    = models.ForeignKey('users.Doctor', on_delete=models.CASCADE,
-                                  related_name = 'doctor_day')
-    year      = models.CharField(max_length=5)
-    month     = models.CharField(max_length=3)
-    days      = models.CharField(max_length=500)
+    doctor = models.ForeignKey('users.Doctor', on_delete=models.CASCADE, related_name = 'doctor_day')
+    date   = models.DateField(help_text="YYYY-MM-DD") 
 
     class Meta:
         db_table = 'doctor_days'
 
 class DoctorTime(models.Model):
+    class Day(models.IntegerChoices):
+        MON = 0
+        TUE = 1
+        WED = 2
+        THU = 3
+        FRI = 4
+        SAT = 5
+        SUN = 6
+
     doctor = models.ForeignKey('users.Doctor', on_delete=models.CASCADE,
                                 related_name = 'doctor_time')
-    days   = models.CharField(max_length=20)
-    times  = models.CharField(max_length=500)
+    days   = models.IntegerField(choices=Day.choices)
+    times  = models.TimeField()
 
     class Meta:
         db_table = 'doctor_times'

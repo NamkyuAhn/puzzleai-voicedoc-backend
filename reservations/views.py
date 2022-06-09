@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, date
 
 from reservations.models import Reservation
 from users.models        import Subject, Doctor, DoctorDay, DoctorTime
@@ -40,41 +40,34 @@ class DoctorListView(View):
 class DoctorWorkView(View):
     @signin_decorator
     def get(self, request, doctor_id):
-        try:
-            year   = request.GET.get('year')
-            month  = request.GET.get('month')
-            dates  = request.GET.get('dates', None)
+        year   = int(request.GET.get('year'))
+        month  = int(request.GET.get('month'))
+        dates  = request.GET.get('dates', None)
 
-            if dates != None: 
-                full_day = f'{year}-{month}-{dates}'
-                reservations = Reservation.objects.filter(doctor_id = doctor_id, date = full_day)
+        if dates != None: 
+            full_date = date(int(year), int(month), int(dates))
+            current   = datetime.now()
+            current   = date(current.year, current.month, current.day)
+            if current > full_date: #과거시간 조회 못하게
+                return JsonResponse({'message' : "you can't read old calaneder"}, status = 400)
 
-                day = date(int(year), int(month), int(dates)).weekday()
-                day_confirm = DoctorDay.objects.get(doctor_id = doctor_id, 
-                                    year = year, month = month)
-                if str(day) not in day_confirm.days:
-                    return JsonResponse({'message' : f'not working on that day on month {month}'}, status = 400)
+            reservations  = Reservation.objects.filter(doctor_id = doctor_id, date = full_date)
+            working_times = DoctorTime.objects.filter(days = full_date.weekday())
+            time_list     = [str(time.times) for time in working_times]
+            expired_time  = [str(reservation.time)[:-3] for reservation in reservations]
 
-                working_time = DoctorTime.objects.get(days = day).times
-                working_times = {'times' : working_time.split(',')}
-                expired_time = [reservation.time for reservation in reservations]
-                return JsonResponse({'working_times' : working_times,
-                                    'expired_times' : expired_time}, status = 200)
+            if len(time_list) == 0: #일 없는날 분기
+                return JsonResponse({'message' : f'not work on {full_date}'}, status = 400)
 
-            working_day = DoctorDay.objects.get(doctor_id = doctor_id, 
-                                    year = year, month = month).days
-            time_lists = working_day.split(",")
-            result = []
-            for time in time_lists:
-                result.append(int(time))
-            return JsonResponse({'result' : result}, status = 200)
+            return JsonResponse({'working_times' : time_list,
+                                 'expired_times' : expired_time}, status = 200)
 
-        except DoctorDay.DoesNotExist:
-            return JsonResponse({'message' : "조건에 부합하는 의사 근무날짜 없음"}, status = 400)
-
-        except DoctorTime.DoesNotExist:
-            return JsonResponse({'message' : "조건의 부합하는 의사 근무시간 없음"}, status = 400)
-              
+        days     = DoctorDay.objects.filter(doctor_id = doctor_id)
+        day_list = []
+        for day in days:
+            if day.date.month == month and day.date.year == year:
+                day_list.append(day.date.weekday())
+        return JsonResponse({'result' : list(set(day_list))}, status = 200)
                     
 
             

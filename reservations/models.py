@@ -5,9 +5,9 @@ class Reservation(models.Model):
     doctor     = models.ForeignKey('users.Doctor', on_delete=models.CASCADE)
     status     = models.ForeignKey('reservations.Status', on_delete=models.CASCADE)
     symtom     = models.CharField(max_length=1000)
-    opinion    = models.CharField(max_length=1000)
+    opinion    = models.CharField(max_length=1000, null=True)
     date       = models.DateField(help_text="YYYY-MM-DD")
-    time       = models.CharField(max_length=20)
+    time       = models.TimeField() 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
