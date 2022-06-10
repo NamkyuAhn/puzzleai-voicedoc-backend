@@ -1,8 +1,9 @@
-from datetime import datetime, date, time
+from datetime import datetime
+from time import strftime
 
-from reservations.models import Reservation
+from reservations.models import Reservation, ReservationImage
 from users.models        import Subject, Doctor, DoctorDay, DoctorTime
-from core.functions      import signin_decorator
+from core.functions      import signin_decorator, convertor
 from voicedoc.settings   import IP_ADDRESS
 
 from django.views import View
@@ -25,16 +26,17 @@ class SubjectView(View):
 class DoctorListView(View):
     @signin_decorator
     def get(self, request, subject_id):
+        offset = request.GET.get['offset']
+        limit  = request.GET.get['limit']
         doctors = Doctor.objects.filter(subject_id = subject_id)\
         .select_related('subject', 'hospital', 'user')\
         .annotate(
-            file_location = Concat(
-                Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
+            file_location = Concat(Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
             name          = Concat('user__name', Value(''),output_field = CharField()),
             hospital_name = Concat('hospital__name', Value(''),output_field = CharField()),
             subject_name  = Concat('subject__name', Value(''),output_field = CharField()),
             )\
-        .values('id', 'name', 'file_location', 'hospital_name', 'subject_name')  
+        .values('id', 'name', 'file_location', 'hospital_name', 'subject_name')[offset:offset+limit] 
         return JsonResponse({'result' : list(doctors)}, status = 200)
 
 class DoctorWorkView(View):
@@ -66,6 +68,48 @@ class DoctorWorkView(View):
                     if day.date.month == month and day.date.year == year]
         return JsonResponse({'result' : list(set(day_list))}, status = 200)
                     
+class ReservationView(View):
+    @signin_decorator
+    def get(self, request, reservation_id):
+        reservation = Reservation.objects.get(id = reservation_id)
+        
+        if reservation.user_id != request.user.id:#다른 환자의 진료 열람 X
+            return JsonResponse({'message' : 'not allowed'}, status = 403)
 
+        images = ReservationImage.objects.filter(reservation_id = reservation.id)\
+                .annotate(
+                 url = Concat(Value(IP_ADDRESS), 'image', output_field = CharField()),
+                 )
+
+        image_list = []
+        for image in images:
+            image_list.append({
+                'url' : image.url,
+                'id' : image.id
+            })
+
+        result = {'status' :  reservation.status.name,
+            'image' : image_list,
+            'symtom' : reservation.symtom,
+            'doctorOpinion' : reservation.opinion,
+            'reservationDate' : convertor(reservation.date, reservation.time)
+            }
+        return JsonResponse({'result' : result}, status = 200)
+
+class ReservationsView(View):
+    @signin_decorator
+    def get(self, request):
+        reservations = Reservation.objects.filter(user_id = request.user.id)\
+                        .select_related('doctor', 'status', 'user')\
+                        .prefetch_related('reservationimage')\
+                        .annotate(
+                            file_location = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
+                            doctor_name   = Concat('doctor__user__name', Value(''),output_field = CharField()),
+                            hospital_name = Concat('doctor__hospital__name', Value(''),output_field = CharField()),
+                            subject_name  = Concat('doctor__subject__name', Value(''),output_field = CharField()),
+                            status_name   = Concat('status__name', Value(''),output_field = CharField()),
+                       )\
+                        .values('date', 'time', 'status_name', 'doctor_name', 'subject_name', 'hospital_name','file_location')
+        return JsonResponse({'result' : list(reservations)}, status = 200)
             
 
