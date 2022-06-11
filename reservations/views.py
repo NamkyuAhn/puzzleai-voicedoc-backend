@@ -51,8 +51,6 @@ class DoctorWorkView(View):
             if current.day > full_date.day: #과거시간 조회 못하게
                 return JsonResponse({'message' : "you can't read old calaneder"}, status = 400)
 
-            # reservations  = Reservation.objects.filter(Q(doctor_id = doctor_id, date = full_date, status_id = 1) 
-            #                                          | Q(doctor_id = doctor_id, date = full_date, status_id = 2))
             reservations  = Reservation.objects.filter(doctor_id = doctor_id, date = full_date)
             working_times = DoctorTime.objects.filter(days = full_date.weekday())
             time_list     = [str(time.times) for time in working_times]
@@ -81,13 +79,11 @@ class ReservationView(View):
                 .annotate(
                  url = Concat(Value(IP_ADDRESS), 'image', output_field = CharField()),
                  )
-        image_list = []
 
-        for image in images:
-            image_list.append({
-                'url' : image.url,
-                'id' : image.id
-            })
+        image_list = [{
+            'url' : image.url,
+            'id'  : image.id
+        } for image in images]
 
         result = {
             'status' :  reservation.status.name,
