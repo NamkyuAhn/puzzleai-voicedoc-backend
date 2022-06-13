@@ -58,7 +58,7 @@ class DoctorWorkView(View):
             if full_date.weekday() not in day_list: #일 없는날 분기1
                 return JsonResponse({'message' : f'not work on {full_date.strftime("%Y-%m-%d")}'}, status = 400)
 
-            reservations  = Reservation.objects.filter(Q(doctor_id = doctor_id, date = full_date, status_id = 1) 
+            reservations  = Reservation.objects.filter(Q(doctor_id = doctor_id, date = full_date, status_id = 1) #취소된 예약의 시간은 불러오지않게
                                                      | Q(doctor_id = doctor_id, date = full_date, status_id = 2))                
             working_times = DoctorTime.objects.filter(days = full_date.weekday())
             time_list     = [str(time.times) for time in working_times]
