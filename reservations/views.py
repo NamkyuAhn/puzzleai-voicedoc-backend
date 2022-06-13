@@ -9,7 +9,7 @@ from django.views import View
 from django.http  import JsonResponse
 from django.db    import transaction
 from django.db.models.functions import Concat
-from django.db.models           import CharField, Value
+from django.db.models           import CharField, Value, Q
 
 class SubjectView(View):
     @signin_decorator
@@ -58,7 +58,8 @@ class DoctorWorkView(View):
             if full_date.weekday() not in day_list: #일 없는날 분기1
                 return JsonResponse({'message' : f'not work on {full_date.strftime("%Y-%m-%d")}'}, status = 400)
 
-            reservations  = Reservation.objects.filter(doctor_id = doctor_id, date = full_date)                
+            #reservations  = Reservation.objects.filter(doctor_id = doctor_id, date = full_date)
+            reservations  = Reservation.objects.filter(Q(doctor_id = doctor_id, date = full_date, status_id = 1) | Q(doctor_id = doctor_id, date = full_date, status_id = 2))                
             working_times = DoctorTime.objects.filter(days = full_date.weekday())
             time_list     = [str(time.times) for time in working_times]
             expired_time  = [reservation.time.strftime("%H:%M") for reservation in reservations]
