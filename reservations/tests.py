@@ -557,51 +557,53 @@ class ReservationCreateTest(TransactionTestCase):
     def tearDown(self) -> None:
         return super().tearDown()
     
-    # def test_create_success(self):
-    #     client      = Client()
-    #     user        = User.objects.get(name='환자1')
-    #     token       = jwt_generator(user.id)
-    #     header      = {'HTTP_Authorization' : token}
-    #     doc         = User.objects.get(name = '의사1')
-    #     testday     = datetime.now()
-    #     year        = testday.year
-    #     month       = testday.month
-    #     day         = testday.day
-    #     form        = {'doctor_id':doc.id,
-    #                     'year':f'{year}',
-    #                     'month':f'{month}',
-    #                     'date':f'{day}',
-    #                     'time':'11:00',
-    #                     'symptom':'asdf',
-    #                     'img':['ddd']}
-    #     response    = client.post(f'/reservations', form, **header)
+    def test_create_success(self):
+        client      = Client()
+        user        = User.objects.get(name='환자1')
+        token       = jwt_generator(user.id)
+        header      = {'HTTP_Authorization' : token}
+        doc_user    = User.objects.get(name = '의사1')
+        doc         = Doctor.objects.get(user_id = doc_user.id)
+        testday     = datetime.now()
+        year        = testday.year
+        month       = testday.month
+        day         = testday.day
+        form        = {'doctor_id':doc.id,
+                        'year':f'{year}',
+                        'month':f'{month}',
+                        'date':f'{day}',
+                        'time':'11:00',
+                        'symptom':'asdf',
+                        'img':['ddd']}
+        response    = client.post(f'/reservations', form, **header)
 
-    #     self.assertEqual(response.status_code, 201)
-    #     self.assertEqual(response.json(), {'message' : 'reservation created'})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message' : 'reservation created'})
     
-    # def test_create_success_on_cancel_time(self):
-        # client      = Client()
-        # user        = User.objects.get(name='환자1')
-        # token       = jwt_generator(user.id)
-        # header      = {'HTTP_Authorization' : token}
-        # doc         = User.objects.get(name = '의사1').id
-        # testday     = datetime.now()
-        # year        = testday.year
-        # month       = testday.month
-        # day         = testday.day
-        # form        = {
-        #                 'doctor_id':Doctor.objects.get(user_id = doc).id,
-        #                 'year':f'{year}',
-        #                 'month':f'{month}',
-        #                 'date':f'{day}',
-        #                 'time':'14:00',
-        #                 'symptom':'asdf',
-        #                 'img':['ddd']
-        # }
-        # response    = client.post(f'/reservations', form, **header)
+    def test_create_success_on_cancel_time(self):
+        client      = Client()
+        user        = User.objects.get(name='환자1')
+        token       = jwt_generator(user.id)
+        header      = {'HTTP_Authorization' : token}
+        doc_user    = User.objects.get(name = '의사1')
+        doc         = Doctor.objects.get(user_id = doc_user.id)
+        testday     = datetime.now()
+        year        = testday.year
+        month       = testday.month
+        day         = testday.day
+        form        = {
+                        'doctor_id':doc.id,
+                        'year':f'{year}',
+                        'month':f'{month}',
+                        'date':f'{day}',
+                        'time':'14:00',
+                        'symptom':'asdf',
+                        'img':['ddd']
+        }
+        response    = client.post(f'/reservations', form, **header)
 
-        # self.assertEqual(response.status_code, 201)
-        # self.assertEqual(response.json(), {'message' : 'reservation created'})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message' : 'reservation created'})
     
     def test_create_fail_workingtime(self):
         client      = Client()
