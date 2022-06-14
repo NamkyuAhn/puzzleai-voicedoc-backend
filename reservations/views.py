@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time, date
 
 from reservations.models import Reservation, ReservationImage, Status
 from users.models        import Subject, Doctor, DoctorDay, DoctorTime
-from core.functions      import signin_decorator, convertor
+from core.functions      import signin_decorator, convertor, patient_decorator
 from voicedoc.settings   import IP_ADDRESS
 
 from django.views import View
@@ -61,7 +61,7 @@ class DoctorWorkView(View):
             reservations  = Reservation.objects.filter(Q(doctor_id = doctor_id, date = full_date, status_id = 1) #취소된 예약의 시간은 불러오지않게
                                                      | Q(doctor_id = doctor_id, date = full_date, status_id = 2))                
             working_times = DoctorTime.objects.filter(days = full_date.weekday())
-            time_list     = [str(time.times) for time in working_times]
+            time_list     = [time.time.strftime("%H:%M") for time in working_times]
             expired_time  = [reservation.time.strftime("%H:%M") for reservation in reservations]
 
             if len(time_list) == 0: #일 없는날 분기2
@@ -74,9 +74,10 @@ class DoctorWorkView(View):
          
 class ReservationView(View):
     @signin_decorator
-    def get(self, request, reservation_id):
+    def get(self, request):
         try : 
-            reservation = Reservation.objects.get(id = reservation_id)
+            reservation_id = request.GET.get('res_id')
+            reservation    = Reservation.objects.get(id = reservation_id)
 
             if reservation.user_id != request.user.id: #다른 환자의 진료 열람 X
                 return JsonResponse({'message' : 'not allowed'}, status = 403)
@@ -104,11 +105,12 @@ class ReservationView(View):
             return JsonResponse({'message' : 'reservation not exists'}, status = 400)
     
     @signin_decorator
-    def patch(self, request, reservation_id):
+    def patch(self, request):
         try: 
-            work        = request.GET.get('work')
-            user_id     = request.user.id
-            reservation = Reservation.objects.get(id = reservation_id)
+            reservation_id = request.GET.get('res_id')
+            work           = request.GET.get('work')
+            user_id        = request.user.id
+            reservation    = Reservation.objects.get(id = reservation_id)
 
             if reservation.user_id != user_id:
                 return JsonResponse({'message' : 'not allowed'}, status = 403)
@@ -124,9 +126,64 @@ class ReservationView(View):
         
         except Reservation.DoesNotExist:
             return JsonResponse({'message' : 'reservation not exists'}, status = 400)
-   
 
-        
+    @patient_decorator
+    def post(self, request):
+        try : 
+            timedate    = datetime.now()
+            user_id     = request.user.id
+            doctor_id   = request.POST['doctor_id']
+            symptom     = request.POST['symptom']
+            year        = int(request.POST['year'])
+            month       = int(request.POST['month'])
+            day         = int(request.POST['date'])
+            times       = request.POST['time']
+            images      = request.FILES.getlist('img')
+            format_time = time(int(times[:2]), int(times[3:]))
+            format_date = datetime(year,month,day)
+
+            if timedate.date() > format_date.date(): #과거날짜/시간으로 예약 방지
+                return JsonResponse({'message' : 'not allowed to make reservation to old date'}, status = 400)
+
+            if not DoctorDay.objects.filter(date = format_date).exists(): #일 안하는 날에 예약 생성 방지
+                return JsonResponse({'message' : 'not working day'}, status = 400)
+            
+            working_times = DoctorTime.objects.filter(days = format_date.weekday())
+            time_list     = [time.time.strftime("%H:%M") for time in working_times]
+            if times not in time_list: #일 안하는 시간에 예약 생성 방지
+                return JsonResponse({'message' : 'not working time'}, status = 400)
+
+            if Reservation.objects.filter(Q(doctor_id = doctor_id, date = format_date, time = format_time, status_id = 1) 
+                                        | Q(doctor_id = doctor_id, date = format_date, time = format_time, status_id = 2)).exists():#취소된 예약 제외 중복시간 방지
+                return JsonResponse({'message' : 'that time already reserved'}, status = 400)
+
+            with transaction.atomic():
+                status = Status.objects.get(name="진료대기")
+                Reservation.objects.create(
+                    user_id = user_id,
+                    doctor_id = doctor_id,
+                    symtom = symptom,
+                    date = format_date.strftime("%Y-%m-%d"),
+                    time = times,
+                    status_id = status.id
+                )
+            with transaction.atomic():
+                reservation = Reservation.objects.get(user_id = user_id, doctor_id = doctor_id, symtom = symptom, 
+                                                      time = format_time,status_id = status.id, date = format_date)
+                imgs = [
+                    ReservationImage(
+                        image          = image,
+                        reservation_id = reservation.id
+                    )
+                    for image in images
+                ]
+                ReservationImage.objects.bulk_create(imgs)
+            return JsonResponse({'message' : 'reservation created'}, status = 201)
+
+        except KeyError:
+            return JsonResponse({'message' : 'KeyError'}, status = 400)
+
+
 
             
 

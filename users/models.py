@@ -63,7 +63,7 @@ class DoctorTime(models.Model):
     doctor = models.ForeignKey('users.Doctor', on_delete=models.CASCADE,
                                 related_name = 'doctor_time')
     days   = models.IntegerField(choices=Day.choices)
-    times  = models.TimeField()
+    time   = models.TimeField()
 
     class Meta:
         db_table = 'doctor_times'
