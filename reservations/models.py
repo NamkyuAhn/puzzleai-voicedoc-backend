@@ -7,7 +7,7 @@ class Reservation(models.Model):
     symtom     = models.CharField(max_length=1000)
     opinion    = models.CharField(max_length=1000, null=True)
     date       = models.DateField(help_text="YYYY-MM-DD")
-    time       = models.TimeField() 
+    time       = models.TimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
