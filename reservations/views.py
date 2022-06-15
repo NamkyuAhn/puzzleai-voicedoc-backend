@@ -1,4 +1,5 @@
 from datetime import datetime, time, date
+from urllib import request
 
 from reservations.models import Reservation, ReservationImage, Status
 from users.models        import Subject, Doctor, DoctorDay, DoctorTime
@@ -26,7 +27,9 @@ class SubjectView(View):
 class DoctorListView(View):
     @signin_decorator
     def get(self, request, subject_id):
-        doctors = Doctor.objects.filter(subject_id = subject_id)\
+        offset = int(request.GET.get('limit', 0))
+        limit  = int(request.GET.get('limit', 5))
+        doctors = Doctor.objects.filter(subject_id = subject_id)[offset : offset + limit]\
         .select_related('subject', 'hospital', 'user')\
         .annotate(
             file_location = Concat(Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
@@ -141,6 +144,9 @@ class ReservationView(View):
             images      = request.FILES.getlist('img')
             format_time = time(int(times[:2]), int(times[3:]))
             format_date = datetime(year,month,day)
+            
+            if len(images) > 6:#이미지 6개 초과 방지
+                return JsonResponse({'message' : 'images upload limit is 6'}, status = 400)
 
             if timedate.date() > format_date.date(): #과거날짜/시간으로 예약 방지
                 return JsonResponse({'message' : 'not allowed to make reservation to old date'}, status = 400)
@@ -183,7 +189,30 @@ class ReservationView(View):
         except KeyError:
             return JsonResponse({'message' : 'KeyError'}, status = 400)
 
-
+class ReservationsView(View):
+    @signin_decorator
+    def get(self, request):
+        offset = int(request.GET.get('limit', 0))
+        limit  = int(request.GET.get('limit', 5))
+        reservations = Reservation.objects.filter(user_id = request.user.id)[offset : offset + limit]\
+                        .select_related('doctor', 'status', 'user')\
+                        .annotate(
+                            file_location = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
+                            doctor_name   = Concat('doctor__user__name', Value(''),output_field = CharField()),
+                            hospital_name = Concat('doctor__hospital__name', Value(''),output_field = CharField()),
+                            subject_name  = Concat('doctor__subject__name', Value(''),output_field = CharField()),
+                            status_name   = Concat('status__name', Value(''),output_field = CharField()),
+                       )
+        result = [{
+            'status' :  reservation.status.name,
+            'reservation_date' : convertor(reservation.date, reservation.time),
+            'doctor_name' : reservation.doctor_name,
+            'hospital_name' : reservation.hospital_name,
+            'subject_name' : reservation.subject_name,
+            'doctor_image' : reservation.file_location,
+            'reservation_id' : reservation.id
+        }for reservation in reservations]
+        return JsonResponse({'result' : result}, status = 200)
 
             
 
