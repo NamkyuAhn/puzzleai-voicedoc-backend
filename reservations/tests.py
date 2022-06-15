@@ -8,6 +8,7 @@ from core.functions      import jwt_generator, convertor
 from django.test import TestCase, TransactionTestCase, Client
 from django.db.models.functions import Concat
 from django.db.models           import CharField, Value, Q
+from django.core.files          import File
 
 class SubjectAndDoctorLoadTest(TestCase):
     def setUp(self):
@@ -568,13 +569,14 @@ class ReservationCreateTest(TransactionTestCase):
         year        = testday.year
         month       = testday.month
         day         = testday.day
+        file        = File(open('reservations/models.py'))
         form        = {'doctor_id':doc.id,
                         'year':f'{year}',
                         'month':f'{month}',
                         'date':f'{day}',
                         'time':'11:00',
                         'symptom':'asdf',
-                        'img':['ddd']}
+                        'img':[file]}
         response    = client.post(f'/reservations', form, **header)
 
         self.assertEqual(response.status_code, 201)
@@ -591,6 +593,7 @@ class ReservationCreateTest(TransactionTestCase):
         year        = testday.year
         month       = testday.month
         day         = testday.day
+        file        = File(open('reservations/models.py'))
         form        = {
                         'doctor_id':doc.id,
                         'year':f'{year}',
@@ -598,13 +601,37 @@ class ReservationCreateTest(TransactionTestCase):
                         'date':f'{day}',
                         'time':'14:00',
                         'symptom':'asdf',
-                        'img':['ddd']
+                        'img':[file]
         }
         response    = client.post(f'/reservations', form, **header)
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {'message' : 'reservation created'})
     
+    def test_create_fail_image_limit(self):
+        client      = Client()
+        user        = User.objects.get(name='환자1')
+        token       = jwt_generator(user.id)
+        header      = {'HTTP_Authorization' : token}
+        doc_user    = User.objects.get(name = '의사1')
+        doc         = Doctor.objects.get(user_id = doc_user.id)
+        testday     = datetime.now()
+        year        = testday.year
+        month       = testday.month
+        day         = testday.day
+        file        = File(open('reservations/models.py'))
+        form        = {'doctor_id':doc.id,
+                        'year':f'{year}',
+                        'month':f'{month}',
+                        'date':f'{day}',
+                        'time':'11:00',
+                        'symptom':'asdf',
+                        'img':[file, file, file, file, file, file, file]}
+        response    = client.post(f'/reservations', form, **header)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message' : 'images upload limit is 6'})
+
     def test_create_fail_workingtime(self):
         client      = Client()
         user        = User.objects.get(name='환자1')
@@ -725,4 +752,147 @@ class ReservationCreateTest(TransactionTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'message' : 'not allowed to make reservation to old date'})
 
+class ReservationlistTest(TransactionTestCase):
+    def setUp(self):
+        testday   = datetime.now()
+        year      = testday.year
+        month     = testday.month
+        day       = testday.day
+        full_date = date(year, month, day)
 
+        User.objects.bulk_create([
+            User(name = '환자1', 
+                 email = 'patient1@gmail.com',
+                 password = '1q2w3e4r',
+                 is_doctor = False),
+            User(name = '의사1', 
+                 email = 'doctor1@gmail.com',
+                 password = '1q2w3e4r',
+                 is_doctor = True)
+        ])
+
+        Subject.objects.create(
+            name  = "과목1",
+            image = "image 예시"
+        )
+
+        Hospital.objects.create(
+            name = '병원1'
+        )
+
+        doc      = User.objects.get(name = '의사1')
+        hospital = Hospital.objects.get(name = '병원1')
+        subject  = Subject.objects.get(name = '과목1')
+        
+        Doctor.objects.create(
+            user_id = doc.id,
+            profile_image = 'image',
+            hospital_id = hospital.id,
+            subject_id = subject.id,
+        )
+
+        doctor = Doctor.objects.get(hospital_id = hospital.id)
+
+        DoctorDay.objects.create(
+            date = full_date,
+            doctor_id = doctor.id,
+        )
+
+        DoctorTime.objects.bulk_create([
+            DoctorTime(days = testday.weekday(),
+                       time = '11:00',
+                       doctor_id = doctor.id),
+            DoctorTime(days = testday.weekday(),
+                       time = '12:00',
+                       doctor_id = doctor.id),
+            DoctorTime(days = testday.weekday(),
+                       time = '13:00',
+                       doctor_id = doctor.id),
+            DoctorTime(days = testday.weekday(),
+                       time = '14:00',
+                       doctor_id = doctor.id),
+        ])
+
+        Status.objects.bulk_create([
+            Status(name = '진료대기'),
+            Status(name = '진료완료'),
+            Status(name = '진료취소')
+        ])
+
+        status   = Status.objects.get(name='진료대기')
+        ended    = Status.objects.get(name='진료완료')
+        canceled = Status.objects.get(name='진료취소')
+
+        Reservation.objects.bulk_create([
+            Reservation(symtom = 'good',
+                        opinion = 'ddd',
+                        date = full_date,
+                        time = '12:00:00.000000',
+                        doctor_id = doctor.id,
+                        status_id = ended.id,
+                        user_id = User.objects.get(name='환자1').id),
+
+            Reservation(symtom = 'ended',
+                        opinion = 'ddd',
+                        date = full_date,
+                        time = '13:00:00.000000',
+                        doctor_id = doctor.id,
+                        status_id = status.id,
+                        user_id = User.objects.get(name='환자1').id),
+
+            Reservation(symtom = 'canceled',
+                        opinion = 'ddd',
+                        date = full_date,
+                        time = '14:00:00.000000',
+                        doctor_id = doctor.id,
+                        status_id = canceled.id,
+                        user_id = User.objects.get(name='환자1').id),
+        ])
+
+        ReservationImage.objects.bulk_create([
+            ReservationImage(
+                image = 'dd',
+                reservation_id = Reservation.objects.get(symtom = 'good').id
+            ),
+            ReservationImage(
+                image = 'dd',
+                reservation_id = Reservation.objects.get(symtom = 'ended').id
+            ),
+            ReservationImage(
+                image = 'dd',
+                reservation_id = Reservation.objects.get(symtom = 'canceled').id
+            ),
+        ])
+
+    def tearDown(self) -> None:
+        return super().tearDown()
+    
+    def test_list_load_success(self):
+        client      = Client()
+        user        = User.objects.get(name='환자1')
+        token       = jwt_generator(user.id)
+        header      = {'HTTP_Authorization' : token}
+        offset      = 0
+        limit       = 4
+        reservations = Reservation.objects.filter(user_id = user.id)[offset : offset + limit]\
+                        .select_related('doctor', 'status', 'user')\
+                        .annotate(
+                            file_location = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
+                            doctor_name   = Concat('doctor__user__name', Value(''),output_field = CharField()),
+                            hospital_name = Concat('doctor__hospital__name', Value(''),output_field = CharField()),
+                            subject_name  = Concat('doctor__subject__name', Value(''),output_field = CharField()),
+                            status_name   = Concat('status__name', Value(''),output_field = CharField()),
+                       )
+        result = [{
+            'status' :  reservation.status.name,
+            'reservation_date' : convertor(reservation.date, reservation.time),
+            'doctor_name' : reservation.doctor_name,
+            'hospital_name' : reservation.hospital_name,
+            'subject_name' : reservation.subject_name,
+            'doctor_image' : reservation.file_location,
+            'reservation_id' : reservation.id
+        }for reservation in reservations]
+        response    = client.get(f'/reservations/list', **header)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'result' : result})
