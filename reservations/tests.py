@@ -9,6 +9,7 @@ from django.test import TestCase, TransactionTestCase, Client
 from django.db.models.functions import Concat
 from django.db.models           import CharField, Value, Q
 from django.core.files          import File
+from django.core.paginator      import Paginator
 
 class SubjectAndDoctorLoadTest(TestCase):
     def setUp(self):
@@ -78,10 +79,19 @@ class SubjectAndDoctorLoadTest(TestCase):
             hospital_name = Concat('hospital__name', Value(''),output_field = CharField()),
             subject_name  = Concat('subject__name', Value(''),output_field = CharField()),
             )\
-        .values('id', 'name', 'file_location', 'hospital_name', 'subject_name') 
+        .order_by('id')
+        doctors = Paginator(doctors, 5)
+
+        result = [{
+            'id' : doctor.id,
+            'name' : doctor.name,
+            'file_location' : doctor.file_location,
+            'hospital_name' : doctor.hospital_name,
+            'subject_name' : doctor.subject_name
+        }for doctor in doctors.page(1).object_list]
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"result" : list(doctors)})
+        self.assertEqual(response.json(), {"result" : result})
 
 class DateAndTimeLoadTest(TestCase):
     def setUp(self):
@@ -556,6 +566,7 @@ class ReservationCreateTest(TransactionTestCase):
         ])
 
     def tearDown(self) -> None:
+        ReservationImage.objects.all().delete()
         return super().tearDown()
     
     def test_create_success(self):
@@ -569,7 +580,7 @@ class ReservationCreateTest(TransactionTestCase):
         year        = testday.year
         month       = testday.month
         day         = testday.day
-        file        = File(open('reservations/models.py'))
+        file        = File(open('media/doctor_profile_images/default.png', 'rb'))
         form        = {'doctor_id':doc.id,
                         'year':f'{year}',
                         'month':f'{month}',
@@ -593,7 +604,7 @@ class ReservationCreateTest(TransactionTestCase):
         year        = testday.year
         month       = testday.month
         day         = testday.day
-        file        = File(open('reservations/models.py'))
+        file        = File(open('media/doctor_profile_images/default.png', 'rb'))
         form        = {
                         'doctor_id':doc.id,
                         'year':f'{year}',
@@ -619,7 +630,7 @@ class ReservationCreateTest(TransactionTestCase):
         year        = testday.year
         month       = testday.month
         day         = testday.day
-        file        = File(open('reservations/models.py'))
+        file        = File(open('media/doctor_profile_images/default.png', 'rb'))
         form        = {'doctor_id':doc.id,
                         'year':f'{year}',
                         'month':f'{month}',
@@ -872,27 +883,30 @@ class ReservationlistTest(TransactionTestCase):
         user        = User.objects.get(name='환자1')
         token       = jwt_generator(user.id)
         header      = {'HTTP_Authorization' : token}
-        offset      = 0
+        page        = 1
         limit       = 4
-        reservations = Reservation.objects.filter(user_id = user.id)[offset : offset + limit]\
+        response = client.get(f'/reservations/list?page={page}&limit={limit}', **header)
+        reservations = Reservation.objects.filter(user_id = user.id)\
                         .select_related('doctor', 'status', 'user')\
                         .annotate(
                             file_location = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
                             doctor_name   = Concat('doctor__user__name', Value(''),output_field = CharField()),
                             hospital_name = Concat('doctor__hospital__name', Value(''),output_field = CharField()),
                             subject_name  = Concat('doctor__subject__name', Value(''),output_field = CharField()),
-                            status_name   = Concat('status__name', Value(''),output_field = CharField()),
-                       )
+                            status_name   = Concat('status__name', Value(''),output_field = CharField()),)\
+                       .order_by('date', 'time')
+        reservations = Paginator(reservations, limit)
+
         result = [{
-            'status' :  reservation.status.name,
+            'status' :  reservation.status_name,
             'reservation_date' : convertor(reservation.date, reservation.time),
             'doctor_name' : reservation.doctor_name,
             'hospital_name' : reservation.hospital_name,
             'subject_name' : reservation.subject_name,
             'doctor_image' : reservation.file_location,
             'reservation_id' : reservation.id
-        }for reservation in reservations]
-        response    = client.get(f'/reservations/list', **header)
+        }for reservation in reservations.page(page).object_list]
+
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {'result' : result})
