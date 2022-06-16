@@ -32,22 +32,15 @@ class DoctorListView(View):
         doctors = Doctor.objects.filter(subject_id = subject_id)\
         .select_related('subject', 'hospital', 'user')\
         .annotate(
-            file_location = Concat(Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
-            name          = Concat('user__name', Value(''),output_field = CharField()),
+            doctor_image  = Concat(Value(IP_ADDRESS), 'profile_image', output_field = CharField()),
+            doctor_name   = Concat('user__name', Value(''),output_field = CharField()),
             hospital_name = Concat('hospital__name', Value(''),output_field = CharField()),
             subject_name  = Concat('subject__name', Value(''),output_field = CharField()),
             )\
+        .values('id', 'doctor_name', 'hospital_name', 'subject_name', 'doctor_image')\
         .order_by('id')
         doctors = Paginator(doctors, limit)
-
-        result = [{
-            'id' : doctor.id,
-            'name' : doctor.name,
-            'file_location' : doctor.file_location,
-            'hospital_name' : doctor.hospital_name,
-            'subject_name' : doctor.subject_name
-        }for doctor in doctors.page(page).object_list]
-        return JsonResponse({'result' : result}, status = 200)
+        return JsonResponse({'result' : list(doctors.page(page).object_list)}, status = 200)
 
 class DoctorWorkView(View):
     @signin_decorator
@@ -206,24 +199,16 @@ class ReservationsView(View):
         reservations = Reservation.objects.filter(user_id = request.user.id)\
                         .select_related('doctor', 'status', 'user')\
                         .annotate(
-                            file_location = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
-                            doctor_name   = Concat('doctor__user__name', Value(''),output_field = CharField()),
-                            hospital_name = Concat('doctor__hospital__name', Value(''),output_field = CharField()),
-                            subject_name  = Concat('doctor__subject__name', Value(''),output_field = CharField()),
-                            status_name   = Concat('status__name', Value(''),output_field = CharField()),)\
+                            doctor_image   = Concat(Value(IP_ADDRESS), 'doctor__profile_image', output_field = CharField()),
+                            doctor_name    = Concat('doctor__user__name', Value(''), output_field = CharField()),
+                            hospital_name  = Concat('doctor__hospital__name', Value(''), output_field = CharField()),
+                            subject_name   = Concat('doctor__subject__name', Value(''), output_field = CharField()),
+                            status_name    = Concat('status__name', Value('') ,output_field = CharField()),
+                            reservation_id = Concat('id', Value(''), output_field = CharField()),)\
+                        .values('status_name','doctor_image', 'doctor_name', 'hospital_name', 'subject_name', 'reservation_id','date','time')\
                         .order_by('date', 'time')
         reservations = Paginator(reservations, limit)
-
-        result = [{
-            'status' :  reservation.status_name,
-            'reservation_date' : convertor(reservation.date, reservation.time),
-            'doctor_name' : reservation.doctor_name,
-            'hospital_name' : reservation.hospital_name,
-            'subject_name' : reservation.subject_name,
-            'doctor_image' : reservation.file_location,
-            'reservation_id' : reservation.id
-        }for reservation in reservations.page(page).object_list]
-        return JsonResponse({'result' : result}, status = 200)
+        return JsonResponse({'result' : list(reservations.page(page).object_list)}, status = 200)
 
             
 
